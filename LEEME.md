@@ -21,7 +21,7 @@ Para jugar desde lejos, el programa hace **zoom digital** sobre la mano (se ve u
 - 60 segundos y 3 vidas.
 - Cada fruta vale 1 punto. Cortar 3 o más de un solo trazo da combo y puntos extra.
 - La bomba quita 1 vida. Si una fruta se cae sin cortar, no pasa nada.
-- El récord se guarda en `%APPDATA%\Corte Frutalecord.json` (no se pierde al actualizar ni al desinstalar).
+- El récord se guarda en `%APPDATA%\Corte Frutal\record.json` (no se pierde al actualizar ni al desinstalar).
 - Para empezar (o jugar otra vez) se corta la fruta grande que aparece abajo.
 
 ## Cómo abrirlo
