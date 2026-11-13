@@ -1,4 +1,4 @@
-**[⬇ Descargar instalador para Windows (Corte Frutal 1.0.2)](https://github.com/nasa-cell/frutas-indice/releases/latest/download/Instalar.Corte.Frutal.1.0.2.exe)**
+**[⬇ Descargar instalador para Windows (Corte Frutal 1.0.3)](https://github.com/nasa-cell/frutas-indice/releases/latest/download/Instalar.Corte.Frutal.1.0.3.exe)**
 
 # Corte Frutal
 

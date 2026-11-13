@@ -143,6 +143,7 @@ class Juego:
     def encender_camara(self):
         self.camara = Camara(MODELO_MANOS, esperar=getattr(self, "camara_vieja", None))
         self.camara.aspecto_pantalla = self.W / self.H
+        self.tramo = 0
         self.camara.start()
 
     def apagar_camara(self):
@@ -300,6 +301,11 @@ class Juego:
         if self.camara:
             dedo = self.camara.leer()[0]
             self.objetivo = (dedo[0] * self.W, dedo[1] * self.H) if dedo else None
+            tramo = self.camara.tramo
+            if tramo != self.tramo:
+                # la mano volvió lejos de donde se perdió: línea nueva, sin cortar nada en el salto
+                self.tramo = tramo
+                self.dedo = None
         if self.objetivo:
             if not self.dedo:
                 self.dedo = list(self.objetivo)

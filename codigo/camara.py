@@ -98,6 +98,7 @@ class Camara(threading.Thread):
         self.fps = 0
         self.aspecto_pantalla = 16 / 9
         self.sin_mano = False      # True si hace rato que no ve la mano (para el aviso)
+        self.tramo = 0             # sube cuando el dedo reaparece lejos: el juego empieza una línea nueva
 
     def leer(self):
         with self.cerrojo:
@@ -145,7 +146,7 @@ class Camara(threading.Thread):
         opciones = vision.HandLandmarkerOptions(
             base_options=BaseOptions(model_asset_buffer=open(self.ruta_modelo, "rb").read()),   # buffer: funciona aunque la carpeta tenga tildes o ñ
             running_mode=vision.RunningMode.VIDEO, num_hands=1,
-            min_hand_detection_confidence=.3, min_hand_presence_confidence=.3, min_tracking_confidence=.4)
+            min_hand_detection_confidence=.2, min_hand_presence_confidence=.2, min_tracking_confidence=.3)
         detector = vision.HandLandmarker.create_from_options(opciones)
         self.estado, self.mensaje = "lista", "Cámara lista"
 
@@ -180,6 +181,12 @@ class Camara(threading.Thread):
         vel_mano = [0.0, 0.0]  # velocidad del nudillo en la imagen, para mover el zoom por delante
         cuadros, t_fps = 0, time.perf_counter()
         t_ultimo = 0
+        candidata = None       # nudillo (x, y) de una mano vista al buscar; se acepta si el cuadro siguiente la confirma
+        ultimo_dedo = None     # último dedo entregado al juego, para saber si reaparece lejos
+        alcance = None         # [izq, der, arriba, abajo] que la mano alcanzó hace poco (imagen en espejo)
+        t_alcance = None
+        punta = None           # (dx, dy) de la punta del índice respecto a su nudillo (punto 5), ya revisada
+        punta_dudosa = None    # punta que saltó sola; se acepta si el cuadro siguiente la repite
         ADELANTO = .05         # segundos que se adelanta el dedo para tapar el retraso de la cámara
         RAPIDO = .6            # desde esta rapidez (pantallas por segundo) el adelanto empieza a actuar
 
@@ -192,7 +199,8 @@ class Camara(threading.Thread):
             ahora = time.perf_counter()
             cuadros += 1
             alto, ancho = cuadro.shape[:2]
-            if not hay_mano or perdida:
+            buscando = not hay_mano or perdida
+            if buscando and candidata is None:   # con una candidata se repite el mismo recorte para confirmarla
                 if cuadros % 15 == 1:
                     dificil = Correccion.luz_dificil(cuadro)
                 if dificil:
@@ -219,9 +227,30 @@ class Camara(threading.Thread):
 
             dedo = None
             mano = None
+            nuevo_tramo = False
             if resultado.hand_landmarks:
                 mano = [(zx + p.x * z, zy + p.y * z) for p in resultado.hand_landmarks[0]]
-                if hay_mano and previo_nudillo:
+                if buscando:
+                    # una mano vista una sola vez al buscar puede ser falsa (cara, sombra, otro objeto):
+                    # se acepta solo si el cuadro siguiente la ve en el mismo sitio
+                    nudillo = mano[9]
+                    t_vista = math.hypot((mano[9][0] - mano[0][0]) * ancho / alto, mano[9][1] - mano[0][1])
+                    cerca = (hay_mano and previo_nudillo and ahora - perdida < .22 and
+                             math.hypot(nudillo[0] - previo_nudillo[0], nudillo[1] - previo_nudillo[1]) < t_vista * 2)
+                    if cerca:
+                        candidata = None   # se perdió hace nada y vuelve cerca: es la misma mano
+                    elif candidata is None or math.hypot(nudillo[0] - candidata[0], nudillo[1] - candidata[1]) > max(.08, t_vista * 2.5):
+                        candidata = nudillo
+                        mano = None
+                    else:
+                        candidata = None
+            elif candidata is not None:
+                candidata = None   # no se confirmó: se sigue buscando
+            if mano:
+                reaparece = bool(perdida)
+                if reaparece:
+                    vel_mano = [0.0, 0.0]   # tras perderla, la distancia al último nudillo no es velocidad real
+                elif hay_mano and previo_nudillo:
                     dtm = max(1e-3, ahora - previo_nudillo[2])
                     vel_mano = [(mano[9][0] - previo_nudillo[0]) / dtm, (mano[9][1] - previo_nudillo[1]) / dtm]
                 previo_nudillo = (mano[9][0], mano[9][1], ahora)
@@ -242,9 +271,47 @@ class Camara(threading.Thread):
                 rw = _lim(tam_mano * alto / ancho * 7, .28, .78)
                 rh = _lim(rw * (ancho / alto) / self.aspecto_pantalla, .25, .85)
                 cy = .46
-                px, py = mano[8]
-                nx = _lim(((1 - px) - (.5 - rw / 2)) / rw, 0, 1)
-                ny = _lim((py - (cy - rh / 2)) / rh, 0, 1)
+                # con el índice apuntando a la cámara la punta se ve corta y el detector la hace saltar
+                # aunque la mano esté quieta: un salto de la punta sola se acepta solo si se repite
+                base = mano[5]
+                p = (mano[8][0] - base[0], mano[8][1] - base[1])
+                if punta is None or reaparece:
+                    punta, punta_dudosa = p, None
+                elif math.hypot((p[0] - punta[0]) * ancho / alto, p[1] - punta[1]) > tam_mano * .5:
+                    if punta_dudosa and math.hypot((p[0] - punta_dudosa[0]) * ancho / alto, p[1] - punta_dudosa[1]) < tam_mano * .3:
+                        punta, punta_dudosa = p, None
+                    else:
+                        punta_dudosa = p
+                else:
+                    punta, punta_dudosa = p, None
+                px, py = base[0] + punta[0], base[1] + punta[1]
+                # zona que se ajusta al alcance real: si la mano llega más allá del borde, la zona crece
+                # hasta ahí (sin eso el dedo quedaba pegado al borde); cuando no, vuelve sola en unos 6 s
+                base_z = [.5 - rw / 2, .5 + rw / 2, cy - rh / 2, cy + rh / 2]
+                mx = 1 - px
+                if alcance is None:
+                    alcance, t_alcance = list(base_z), ahora
+                dta = min(.2, ahora - t_alcance)
+                t_alcance = ahora
+                for k, v in enumerate((mx, mx, py, py)):
+                    fuera = v < alcance[k] if k in (0, 2) else v > alcance[k]
+                    if fuera:
+                        alcance[k] += (v - alcance[k]) * .35
+                    alcance[k] += (base_z[k] - alcance[k]) * min(1, dta / 6)
+                zi, zd = min(base_z[0], alcance[0]), max(base_z[1], alcance[1])
+                za, zb = min(base_z[2], alcance[2]), max(base_z[3], alcance[3])
+                zi, zd = max(zi, .02), min(zd, .98)
+                za, zb = max(za, .02), min(zb, .98)
+                nx = _lim((mx - zi) / (zd - zi), 0, 1)
+                ny = _lim((py - za) / (zb - za), 0, 1)
+                rw, rh = zd - zi, zb - za
+                if reaparece and ultimo_dedo and math.hypot(nx - ultimo_dedo[0], ny - ultimo_dedo[1]) > .1:
+                    # volvió lejos de donde quedó: el dedo salta ahí sin arrastrar una línea por el medio
+                    fx.reiniciar()
+                    fy.reiniciar()
+                    ancla = previo = None
+                    vel = [0.0, 0.0]
+                    nuevo_tramo = True
                 sx, sy = fx.paso(nx, ahora), fy.paso(ny, ahora)
                 # zona clavada de unos 1 cm de mano (la mano mide unos 9 cm de muñeca a nudillo)
                 cm = tam_mano / 9
@@ -277,6 +344,7 @@ class Camara(threading.Thread):
                     hay_mano = False
                     corregir = False
                     previo = previo_nudillo = None
+                    punta = punta_dudosa = None
                     vel = [0.0, 0.0]
                     vel_mano = [0.0, 0.0]
                     fx.reiniciar()
@@ -286,12 +354,15 @@ class Camara(threading.Thread):
             mini = cv2.resize(cuadro, (320, int(320 * alto / ancho)), interpolation=cv2.INTER_AREA)
             mini = cv2.cvtColor(cv2.flip(mini, 1), cv2.COLOR_BGR2RGB)
             with self.cerrojo:
+                if nuevo_tramo:
+                    self.tramo += 1
                 if dedo is not None:
-                    self.dedo = dedo
+                    self.dedo = ultimo_dedo = dedo
                     if mano:
                         self.mano = mano
                 elif not hay_mano:
                     self.dedo, self.mano = None, None
+                    ultimo_dedo = None
                 self.zona = (zx, zy, z)
                 self.sin_mano = ahora - t_sin_mano > AVISO_SIN_MANO
                 self.miniatura = np.ascontiguousarray(mini)
