@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corte Frutal · botones</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#050b22;font-family:"M PLUS Rounded 1c",sans-serif;color:#eaf2ff;overflow:hidden}
+#opciones{position:fixed;top:8px;left:8px;right:8px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;z-index:9}
+#opciones button{font:inherit;font-weight:800;font-size:13px;padding:7px 12px;border-radius:999px;border:2px solid #ffd85a;background:#0d1b3d;color:#ffd85a;cursor:pointer}
+#opciones button.activo{background:#ffd85a;color:#0d1b3d}
+#escena{position:fixed;left:50%;top:54px;transform:translateX(-50%);width:min(100vw - 16px,(100vh - 110px)*16/9);aspect-ratio:16/9;background:url(captura-juego.png) center/cover;border-radius:10px;overflow:hidden;box-shadow:0 0 0 2px #22407c}
+#escena.sinCam .camImg{opacity:.15}
+.camEstado{position:absolute;right:1%;bottom:.6%;font-size:clamp(8px,1vw,12px);color:#3cff7a}
+#escena.sinCam .camEstado{color:#c8d4f0}
+.btn{position:absolute;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(#1e3470,#0a1434);border:2px solid #ffd85a;color:#fff;font-weight:800;cursor:pointer;user-select:none;font-size:clamp(9px,1.1vw,14px);transition:transform .12s}
+.btn:hover{transform:scale(1.06)}
+.btn svg{width:1.6em;height:1.6em;flex:none}
+.btn .anillo{position:absolute;left:18%;right:18%;bottom:12%;height:3px;border-radius:2px;background:#ffd85a;transform:scaleX(0);transform-origin:left}
+.btn.cargando .anillo{transform:scaleX(1);transition:transform 1s linear}
+.redondo{width:5.2%;aspect-ratio:1;border-radius:50%}
+.pastilla{border-radius:999px;padding:.5em 1em}
+.oculto{display:none!important}
+#nota{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);font-size:13px;background:rgba(13,27,61,.85);padding:6px 14px;border-radius:999px;white-space:nowrap;max-width:calc(100vw - 16px);overflow:hidden;text-overflow:ellipsis}
+.tapa{position:absolute;right:.9%;bottom:4%;width:16.4%;aspect-ratio:16/9;border-radius:8px}
+</style>
+</head>
+<body>
+<div id="opciones">
+  <button data-op="hoy">Como está hoy</button>
+  <button data-op="A" class="activo">A · Abajo a la izquierda</button>
+  <button data-op="B">B · Arriba al centro</button>
+  <button data-op="C">C · Junto a la cámara</button>
+</div>
+
+<div id="escena">
+  <div class="tapa camImg"></div>
+  <span class="camEstado">● cámara encendida</span>
+
+  <!-- A: dos botones redondos abajo a la izquierda -->
+  <div class="btn redondo op-A" style="left:1.2%;bottom:3%" data-acc="pantalla"><span class="anillo"></span><svg viewBox="0 0 24 24" class="ico-pantalla"></svg></div>
+  <div class="btn redondo op-A" style="left:7.6%;bottom:3%" data-acc="camara"><span class="anillo"></span><svg viewBox="0 0 24 24" class="ico-camara"></svg></div>
+
+  <!-- B: pastillas arriba al centro -->
+  <div class="btn pastilla op-B" style="left:50%;top:2.5%;transform:translateX(-105%)" data-acc="pantalla"><span class="anillo"></span><svg viewBox="0 0 24 24" class="ico-pantalla"></svg><span class="txt-pantalla"></span></div>
+  <div class="btn pastilla op-B" style="left:50%;top:2.5%;transform:translateX(5%)" data-acc="camara"><span class="anillo"></span><svg viewBox="0 0 24 24" class="ico-camara"></svg><span class="txt-camara"></span></div>
+
+  <!-- C: encima del cuadro de la cámara -->
+  <div class="btn redondo op-C" style="right:7%;bottom:28%" data-acc="pantalla"><span class="anillo"></span><svg viewBox="0 0 24 24" class="ico-pantalla"></svg></div>
+  <div class="btn redondo op-C" style="right:.9%;bottom:28%" data-acc="camara"><span class="anillo"></span><svg viewBox="0 0 24 24" class="ico-camara"></svg></div>
+</div>
+
+<div id="nota">Haz clic o deja el mouse 1 segundo encima (en el juego: el dedo encima 1 segundo)</div>
+
+<script>
+let op='A',completa=true,camara=true;
+const esc=document.getElementById('escena'),nota=document.getElementById('nota');
+const ICO={
+  entrar:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="#ffd85a" stroke-width="2.4" stroke-linecap="round"/>',
+  salir:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="#ffd85a" stroke-width="2.4" stroke-linecap="round"/>',
+  cam:'<rect x="3" y="7" width="13" height="10" rx="2" fill="none" stroke="#ffd85a" stroke-width="2.2"/><path d="M16 11l5-3v8l-5-3z" fill="#ffd85a"/>',
+  camNo:'<rect x="3" y="7" width="13" height="10" rx="2" fill="none" stroke="#9fb8e8" stroke-width="2.2"/><path d="M16 11l5-3v8l-5-3z" fill="#9fb8e8"/><path d="M3 4l18 17" stroke="#ff5a6a" stroke-width="2.6" stroke-linecap="round"/>'
+};
+function pintar(){
+  document.querySelectorAll('[class*="op-"]').forEach(e=>e.classList.toggle('oculto',!e.classList.contains('op-'+op)));
+  document.querySelectorAll('.ico-pantalla').forEach(s=>s.innerHTML=completa?ICO.salir:ICO.entrar);
+  document.querySelectorAll('.ico-camara').forEach(s=>s.innerHTML=camara?ICO.cam:ICO.camNo);
+  document.querySelectorAll('.txt-pantalla').forEach(s=>s.textContent=completa?'Salir de pantalla completa':'Pantalla completa');
+  document.querySelectorAll('.txt-camara').forEach(s=>s.textContent=camara?'Apagar cámara':'Encender cámara');
+  document.querySelectorAll('.txt-camara-c').forEach(s=>s.textContent=camara?'Apagar':'Encender');
+  esc.classList.toggle('sinCam',!camara);
+  document.querySelector('.camEstado').textContent=camara?'● cámara encendida':'● cámara apagada (juegas con el mouse)';
+  if(op==='hoy')nota.textContent='Hoy no hay botones: solo la tecla F11 cambia la pantalla y la cámara siempre está prendida';
+}
+function accion(a){
+  if(a==='pantalla'){completa=!completa;nota.textContent=completa?'Ahora: pantalla completa':'Ahora: ventana'}
+  else{camara=!camara;nota.textContent=camara?'Cámara encendida':'Cámara apagada: el juego sigue con el mouse'}
+  pintar();
+}
+document.querySelectorAll('.btn').forEach(b=>{
+  let tm=null;
+  b.onclick=()=>accion(b.dataset.acc);
+  b.onmouseenter=()=>{b.classList.add('cargando');tm=setTimeout(()=>{b.classList.remove('cargando');accion(b.dataset.acc)},1000)};
+  b.onmouseleave=()=>{b.classList.remove('cargando');clearTimeout(tm)};
+});
+document.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>{op=b.dataset.op;document.querySelectorAll('[data-op]').forEach(x=>x.classList.toggle('activo',x===b));nota.textContent='Haz clic o deja el mouse 1 segundo encima (en el juego: el dedo encima 1 segundo)';pintar()});
+pintar();
+</script>
+</body>
+</html>
