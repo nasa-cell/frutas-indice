@@ -111,6 +111,21 @@ def cuadro_camara(j):
     else:
         estado, color = f"muestra tu mano · {fps} fps", (255, 184, 74)
     gr.texto(sup, "● " + estado, 11 * s, color, (cx + cw, cy + ch + 12 * s), "midright", "media")
+    if j.camara and j.camara.estado == "lista" and j.camara.sin_mano:
+        aviso_sin_mano(j)
+
+
+def aviso_sin_mano(j):
+    sup, s = j.sup, j.s
+    texto = "No veo tu mano: acércate o gira un poco"
+    w, h = 430 * s, 44 * s
+    caja = pygame.Rect(0, 0, w, h)
+    caja.midbottom = (j.W / 2, j.H - 22 * s)
+    fondo = pygame.Surface(caja.size, pygame.SRCALPHA)
+    pygame.draw.rect(fondo, (11, 22, 48, 225), fondo.get_rect(), border_radius=int(12 * s))
+    sup.blit(fondo, caja)
+    pygame.draw.rect(sup, DORADO, caja, 2, border_radius=int(12 * s))
+    gr.texto(sup, texto, 17 * s, BLANCO, caja.center, peso="media")
 
 
 # ---------- estela de la espada ----------

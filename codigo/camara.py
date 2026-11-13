@@ -8,6 +8,9 @@
   retraso cuando va rápido.
 - Zona clavada: con el dedo quieto el puntero no se mueve hasta que la mano
   se mueve más o menos 1 cm.
+- Mano perdida: se busca con 13 recortes (algunos con más zoom, para manos de
+  niño o lejanas) y se prueba también la imagen corregida (luz fuerte o
+  contraluz).
 """
 import math
 import threading
@@ -48,7 +51,34 @@ class FiltroEuro:
         return self.x
 
 
-BUSQUEDA = [(.5, .5, 1), (.5, .45, .62), (.5, .45, .45), (.32, .45, .55), (.68, .45, .55)]
+# recortes para buscar la mano perdida: (centro x, centro y, tamaño). Los de 0,42 y 0,3 encuentran manos chicas
+BUSQUEDA = [(.5, .5, 1), (.5, .45, .62)] + [(x, y, .42) for y in (.33, .62) for x in (.25, .5, .75)] +     [(x, y, .3) for y in (.38, .58) for x in (.38, .62)]
+AVISO_SIN_MANO = 3.0   # segundos sin ver la mano antes de mostrar el aviso
+
+
+class Correccion:
+    """Aclara u oscurece la imagen y le sube el contraste (luz fuerte o contraluz)."""
+    def __init__(self):
+        self.clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+
+    def aplicar(self, img):
+        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+        l = lab[:, :, 0]
+        media = float(l.mean()) / 255
+        l = self.clahe.apply(l)
+        g = math.log(.47) / math.log(_lim(media, .05, .95))   # lleva el brillo medio a 0,47
+        tabla = np.clip(((np.arange(256) / 255) ** g) * 255, 0, 255).astype(np.uint8)
+        lab[:, :, 0] = cv2.LUT(l, tabla)
+        return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+    @staticmethod
+    def luz_dificil(img):
+        """True con mucha luz (partes quemadas) o contraluz/oscuridad (mucha imagen negra)."""
+        g = cv2.cvtColor(cv2.resize(img, (160, 90), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2GRAY)
+        quemado = float((g > 245).mean())
+        oscuro = float((g < 25).mean())
+        media = float(g.mean())
+        return quemado > .10 or oscuro > .30 or media > 175 or media < 60
 
 
 class Camara(threading.Thread):
@@ -67,6 +97,7 @@ class Camara(threading.Thread):
         self.miniatura = None      # imagen chica en espejo (RGB)
         self.fps = 0
         self.aspecto_pantalla = 16 / 9
+        self.sin_mano = False      # True si hace rato que no ve la mano (para el aviso)
 
     def leer(self):
         with self.cerrojo:
@@ -114,7 +145,7 @@ class Camara(threading.Thread):
         opciones = vision.HandLandmarkerOptions(
             base_options=BaseOptions(model_asset_buffer=open(self.ruta_modelo, "rb").read()),   # buffer: funciona aunque la carpeta tenga tildes o ñ
             running_mode=vision.RunningMode.VIDEO, num_hands=1,
-            min_hand_detection_confidence=.4, min_hand_presence_confidence=.4, min_tracking_confidence=.4)
+            min_hand_detection_confidence=.3, min_hand_presence_confidence=.3, min_tracking_confidence=.4)
         detector = vision.HandLandmarker.create_from_options(opciones)
         self.estado, self.mensaje = "lista", "Cámara lista"
 
@@ -135,6 +166,10 @@ class Camara(threading.Thread):
         fx, fy = FiltroEuro(min_corte=.9, beta=30.0), FiltroEuro(min_corte=.9, beta=22.0)
         ancla = None           # punto clavado del puntero (zona clavada)
         zona = [.5, .5, 1.0]
+        correccion = Correccion()
+        corregir = False       # True si la mano se encontró en la imagen corregida
+        dificil = False        # luz difícil: al buscar se prueba también la imagen corregida
+        t_sin_mano = time.perf_counter()
         tam_mano = .22
         buscar = 0
         perdida = 0.0
@@ -158,7 +193,15 @@ class Camara(threading.Thread):
             cuadros += 1
             alto, ancho = cuadro.shape[:2]
             if not hay_mano or perdida:
-                b = BUSQUEDA[buscar % len(BUSQUEDA)]
+                if cuadros % 15 == 1:
+                    dificil = Correccion.luz_dificil(cuadro)
+                if dificil:
+                    # cada recorte se prueba normal y corregido: normal, corregido, siguiente recorte…
+                    b = BUSQUEDA[(buscar // 2) % len(BUSQUEDA)]
+                    corregir = buscar % 2 == 1
+                else:
+                    b = BUSQUEDA[buscar % len(BUSQUEDA)]
+                    corregir = False
                 buscar += 1
                 zona = [b[0], b[1], b[2]]
             z = zona[2]
@@ -167,6 +210,8 @@ class Camara(threading.Thread):
             x0, y0 = int(zx * ancho), int(zy * alto)
             recorte = cuadro[y0:y0 + int(z * alto), x0:x0 + int(z * ancho)]
             recorte = cv2.resize(recorte, (640, int(640 * alto / ancho)), interpolation=cv2.INTER_AREA)
+            if corregir:
+                recorte = correccion.aplicar(recorte)
             rgb = cv2.cvtColor(recorte, cv2.COLOR_BGR2RGB)
             t_ms = max(t_ultimo + 1, int(ahora * 1000))
             t_ultimo = t_ms
@@ -181,6 +226,7 @@ class Camara(threading.Thread):
                     vel_mano = [(mano[9][0] - previo_nudillo[0]) / dtm, (mano[9][1] - previo_nudillo[1]) / dtm]
                 previo_nudillo = (mano[9][0], mano[9][1], ahora)
                 hay_mano, perdida = True, 0.0
+                t_sin_mano = ahora
                 t = math.hypot((mano[9][0] - mano[0][0]) * ancho / alto, mano[9][1] - mano[0][1])
                 tam_mano += (t - tam_mano) * .04
                 # zoom: nunca muy cerrado y siempre centrado donde va a estar la mano
@@ -229,6 +275,7 @@ class Camara(threading.Thread):
                             _lim(previo[1] + vel[1] * (quieto + ADELANTO), 0, 1))
                 if quieto > .22:
                     hay_mano = False
+                    corregir = False
                     previo = previo_nudillo = None
                     vel = [0.0, 0.0]
                     vel_mano = [0.0, 0.0]
@@ -246,6 +293,7 @@ class Camara(threading.Thread):
                 elif not hay_mano:
                     self.dedo, self.mano = None, None
                 self.zona = (zx, zy, z)
+                self.sin_mano = ahora - t_sin_mano > AVISO_SIN_MANO
                 self.miniatura = np.ascontiguousarray(mini)
             if ahora - t_fps > 1:
                 self.fps = round(cuadros / (ahora - t_fps))

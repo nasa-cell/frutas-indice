@@ -58,7 +58,7 @@ def main():
     inicio = fondo()
     d = ImageDraw.Draw(inicio)
     titulo(d, "Corte Frutal", 128)
-    centro(d, "Versión 1.0.1  ·  sin internet", 172)
+    centro(d, "Versión 1.0.2  ·  sin internet", 172)
     d.rounded_rectangle((24, 198, 496, 470), radius=14, fill=PANEL)
     boton(d, BOTON, "Instalar")
     centro(d, "Corta frutas con tu dedo índice frente a la cámara", 566, 13, (210, 222, 245))
