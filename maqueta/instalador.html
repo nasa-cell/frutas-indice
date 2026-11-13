@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maqueta instalador Corte Frutal</title>
+<style>
+  :root { --azul:#1e4fa8; --azul2:#163c82; --dorado:#f2b632; --gris:#f0f0f0; --borde:#adadad; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Segoe UI",Tahoma,sans-serif; background:#2b3a55; color:#111; min-height:100vh; }
+  header { padding:14px 16px; color:#fff; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  header h1 { font-size:18px; margin:0 12px 0 0; }
+  .pest { border:2px solid #fff3; background:#ffffff14; color:#fff; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:14px; }
+  .pest.activa { background:var(--dorado); color:#222; border-color:var(--dorado); font-weight:600; }
+  .nota { color:#dfe7f5; font-size:13px; padding:0 16px 10px; }
+  main { display:flex; justify-content:center; padding:10px 16px 30px; }
+  .ventana { width:640px; max-width:100%; background:var(--gris); border:1px solid #555; box-shadow:0 12px 40px #0008; }
+  .titulo { background:#fff; padding:6px 10px; font-size:12px; display:flex; justify-content:space-between; border-bottom:1px solid #ccc; }
+  .titulo b { font-weight:400; }
+  .cuerpo { display:flex; height:330px; background:#fff; }
+  .lado { width:180px; flex:none; background:url(../recursos/fondo/cielo.png) center/cover; position:relative; overflow:hidden; }
+  .lado img { position:absolute; width:70px; }
+  .lado .nombre { position:absolute; bottom:14px; left:0; right:0; text-align:center; color:#fff; font-weight:800; font-size:20px; text-shadow:0 0 3px #000,0 2px 0 #000; }
+  .banda { height:64px; background:#fff; border-bottom:1px solid #ccc; display:flex; align-items:center; padding:0 16px; gap:12px; }
+  .banda .txt b { display:block; font-size:14px; }
+  .banda .txt span { font-size:12px; color:#555; }
+  .banda img { width:46px; margin-left:auto; }
+  .contenido { padding:18px 22px; font-size:13px; flex:1; overflow:auto; }
+  .contenido h2 { font-size:19px; margin:0 0 12px; color:var(--azul2); }
+  label.op { display:flex; gap:8px; align-items:flex-start; margin:8px 0; cursor:pointer; }
+  .ruta { display:flex; gap:6px; margin:6px 0 10px; }
+  .ruta input { flex:1; padding:5px; border:1px solid var(--borde); font:inherit; }
+  .barra { height:20px; border:1px solid var(--borde); background:#e6e6e6; margin:14px 0 6px; }
+  .barra div { height:100%; width:0; background:#06b025; transition:width .2s; }
+  .pie { display:flex; justify-content:flex-end; gap:8px; padding:12px; border-top:1px solid #ccc; }
+  .pie button { min-width:86px; padding:5px 12px; font:inherit; font-size:13px; background:#e1e1e1; border:1px solid var(--borde); cursor:pointer; }
+  .pie button.prim { border-color:var(--azul); outline:1px solid var(--azul); }
+  .pie button:disabled { color:#999; cursor:default; }
+  .oculto { display:none !important; }
+  /* Opción C: moderna */
+  .moderna { width:520px; max-width:100%; border-radius:14px; overflow:hidden; background:url(../recursos/fondo/cielo.png) center/cover; color:#fff; box-shadow:0 12px 40px #0008; text-align:center; padding:28px 24px; }
+  .moderna h2 { font-size:30px; margin:6px 0; text-shadow:0 0 4px #000,0 3px 0 #000; }
+  .moderna .frutas img { width:64px; margin:0 4px; }
+  .moderna .caja { background:#0b1630cc; border-radius:10px; padding:14px; margin:16px 0; text-align:left; font-size:14px; }
+  .moderna .caja a { color:var(--dorado); cursor:pointer; }
+  .moderna button { background:var(--dorado); color:#222; border:none; padding:12px 30px; font-size:17px; font-weight:700; border-radius:10px; cursor:pointer; }
+  .moderna .barra { border:none; border-radius:6px; overflow:hidden; background:#ffffff30; }
+  .moderna .barra div { background:var(--dorado); }
+  /* Hoy */
+  .hoy { width:640px; max-width:100%; background:#fff; border-radius:8px; padding:18px; font-size:14px; }
+  .hoy pre { background:#0c0c0c; color:#ccc; padding:12px; font-size:12px; overflow:auto; }
+  @media (max-width:560px){ .lado{ display:none; } .cuerpo{ height:auto; min-height:300px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Instalador Corte Frutal</h1>
+  <button class="pest activa" data-op="a">A · Clásico con dibujo al costado</button>
+  <button class="pest" data-op="b">B · Clásico con banda arriba</button>
+  <button class="pest" data-op="c">C · Moderno de una pantalla</button>
+  <button class="pest" data-op="hoy">Como está hoy</button>
+</header>
+<div class="nota" id="nota"></div>
+<main>
+  <div id="clasico" class="ventana">
+    <div class="titulo"><b>Instalar Corte Frutal 1.0.0</b><span>— ☐ ✕</span></div>
+    <div class="banda oculto" id="banda"><div class="txt"><b id="bTit"></b><span id="bSub"></span></div><img src="../recursos/frutas/sandia_0_0_entera.png" alt=""></div>
+    <div class="cuerpo">
+      <div class="lado" id="lado">
+        <img src="../recursos/frutas/sandia_0_0_entera.png" style="left:20px;top:30px;transform:rotate(-15deg)" alt="">
+        <img src="../recursos/frutas/naranja_0_0_entera.png" style="left:95px;top:95px" alt="">
+        <img src="../recursos/frutas/fresa_0_0_entera.png" style="left:25px;top:150px;transform:rotate(20deg)" alt="">
+        <img src="../recursos/frutas/kiwi_0_0_corte.png" style="left:90px;top:200px" alt="">
+        <div class="nombre">Corte Frutal</div>
+      </div>
+      <div class="contenido" id="pasos"></div>
+    </div>
+    <div class="pie">
+      <button id="atras">&lt; Atrás</button>
+      <button id="sig" class="prim">Siguiente &gt;</button>
+      <button id="cancelar">Cancelar</button>
+    </div>
+  </div>
+  <div id="moderna" class="moderna oculto"></div>
+  <div id="hoy" class="hoy oculto">
+    <h2 style="margin-top:0">Hoy: sin instalador</h2>
+    <p>Se copia la carpeta <b>juego-frutas</b> y se da doble clic en <b>iniciar.bat</b>. La primera vez sale esta ventana negra, descarga ~390 MB de internet y necesita Python 3.12 ya instalado:</p>
+    <pre>Instalando lo necesario por primera vez, espera...
+Collecting mediapipe
+  Downloading mediapipe-0.10.x-cp312-win_amd64.whl (50 MB)
+Collecting opencv-python ...
+Collecting pygame ...</pre>
+    <p>No hay acceso directo en el escritorio ni en Inicio, ni forma de desinstalar. El récord se guarda dentro de la carpeta del juego.</p>
+  </div>
+</main>
+<script>
+const notas = {
+  a: "Ventana normal de Windows en español. Dibujo del juego (noche + frutas) a la izquierda. Clic en Siguiente para pasar por las pantallas.",
+  b: "Igual que A, pero el dibujo es una banda blanca arriba con una fruta; el texto tiene más espacio.",
+  c: "Una sola pantalla con el fondo del juego: botón grande Instalar. Las opciones (para quién, carpeta, accesos) se abren en «Cambiar».",
+  hoy: "Así se juega ahora en otro PC."
+};
+const pasos = [
+  { t:"Bienvenido a Corte Frutal", s:"Este asistente instalará el juego.", h:`<p>Corta frutas moviendo tu dedo índice frente a la cámara.</p><p>No necesita internet: todo viene dentro del instalador (unos 150 MB).</p><p>Haz clic en Siguiente para continuar.</p>` },
+  { t:"¿Para quién se instala?", s:"Elige quién podrá jugar en este PC.", h:`<label class="op"><input type="radio" name="u" checked> <span><b>Solo para mí</b><br>No pide permiso de administrador.</span></label><label class="op"><input type="radio" name="u"> <span><b>Para todos los usuarios</b><br>Windows pedirá permiso de administrador.</span></label>` },
+  { t:"¿Dónde se instala?", s:"Puedes cambiar la carpeta y el disco.", h:`<p>Carpeta de instalación:</p><div class="ruta"><input value="C:\\Users\\Victus\\AppData\\Local\\Programs\\Corte Frutal"><button>Examinar...</button></div><p>Espacio necesario: 420 MB. Libre en C: 18,2 GB</p>` },
+  { t:"Accesos directos", s:"Dónde poner el ícono del juego.", h:`<label class="op"><input type="checkbox" checked> Crear ícono en el escritorio</label><label class="op"><input type="checkbox" checked> Crear ícono en el menú Inicio</label>` },
+  { t:"Instalando", s:"Espera mientras se copian los archivos.", h:`<p id="arch">Copiando archivos...</p><div class="barra"><div id="pb"></div></div>`, auto:true },
+  { t:"¡Listo!", s:"Corte Frutal quedó instalado.", h:`<p>El juego está listo. Tu récord se guarda en tu usuario y no se pierde al actualizar.</p><label class="op"><input type="checkbox" checked> Jugar ahora</label>` }
+];
+let op = "a", i = 0, tim;
+const $ = id => document.getElementById(id);
+function pinta() {
+  clearInterval(tim);
+  const p = pasos[i];
+  const lado = op === "a" && (i === 0 || i === pasos.length - 1);
+  $("lado").classList.toggle("oculto", !lado);
+  $("banda").classList.toggle("oculto", lado);
+  $("bTit").textContent = p.t; $("bSub").textContent = p.s;
+  $("pasos").innerHTML = (lado ? `<h2>${p.t}</h2>` : "") + p.h;
+  $("atras").disabled = i === 0 || p.auto || i === pasos.length - 1;
+  $("sig").textContent = i === 3 ? "Instalar" : i === pasos.length - 1 ? "Terminar" : "Siguiente >";
+  $("sig").disabled = !!p.auto;
+  $("cancelar").classList.toggle("oculto", i === pasos.length - 1);
+  if (p.auto) correBarra($("pb"), $("arch"), () => { i++; pinta(); });
+}
+function correBarra(pb, txt, fin) {
+  const archivos = ["juego.exe", "mediapipe", "opencv", "pygame", "frutas y fondo", "modelo de manos", "accesos directos"];
+  let v = 0;
+  tim = setInterval(() => {
+    v += 4; pb.style.width = v + "%";
+    if (txt) txt.textContent = "Copiando " + archivos[Math.min(archivos.length - 1, Math.floor(v / 15))] + "...";
+    if (v >= 100) { clearInterval(tim); setTimeout(fin, 300); }
+  }, 80);
+}
+function moderna(fase) {
+  const m = $("moderna");
+  const frutas = `<div class="frutas"><img src="../recursos/frutas/sandia_0_0_entera.png" alt=""><img src="../recursos/frutas/naranja_0_0_entera.png" alt=""><img src="../recursos/frutas/fresa_0_0_entera.png" alt=""></div>`;
+  if (fase === "inicio" || fase === "cambiar") {
+    m.innerHTML = frutas + `<h2>Corte Frutal</h2><div>Versión 1.0.0 · 150 MB · sin internet</div>
+      <div class="caja">Para: <b>solo para mí</b><br>Carpeta: <b>C:\\Users\\Victus\\AppData\\Local\\Programs\\Corte Frutal</b><br>Íconos: <b>escritorio e Inicio</b><br><a id="camb">${fase === "cambiar" ? "Ocultar opciones" : "Cambiar"}</a>
+      ${fase === "cambiar" ? `<label class="op"><input type="radio" name="u2" checked> Solo para mí</label><label class="op"><input type="radio" name="u2"> Todos los usuarios</label><div class="ruta"><input value="C:\\Users\\Victus\\AppData\\Local\\Programs\\Corte Frutal"><button>Examinar...</button></div><label class="op"><input type="checkbox" checked> Ícono en el escritorio</label><label class="op"><input type="checkbox" checked> Ícono en Inicio</label>` : ""}</div>
+      <button id="inst">Instalar</button>`;
+    $("camb").onclick = () => moderna(fase === "cambiar" ? "inicio" : "cambiar");
+    $("inst").onclick = () => moderna("barra");
+  } else if (fase === "barra") {
+    m.innerHTML = frutas + `<h2>Instalando...</h2><div class="barra"><div id="pb2"></div></div><div id="arch2"></div>`;
+    correBarra($("pb2"), $("arch2"), () => moderna("fin"));
+  } else {
+    m.innerHTML = frutas + `<h2>¡Listo!</h2><p>Corte Frutal quedó instalado.</p><button id="jug">Jugar ahora</button><p><a style="color:#fff;cursor:pointer" id="otra">Ver otra vez</a></p>`;
+    $("jug").onclick = $("otra").onclick = () => moderna("inicio");
+  }
+}
+function cambia(nueva) {
+  op = nueva; i = 0; clearInterval(tim);
+  document.querySelectorAll(".pest").forEach(b => b.classList.toggle("activa", b.dataset.op === op));
+  $("nota").textContent = notas[op];
+  $("clasico").classList.toggle("oculto", op === "c" || op === "hoy");
+  $("moderna").classList.toggle("oculto", op !== "c");
+  $("hoy").classList.toggle("oculto", op !== "hoy");
+  if (op === "c") moderna("inicio"); else if (op !== "hoy") pinta();
+}
+$("sig").onclick = () => { if (i === pasos.length - 1) { i = 0; } else i++; pinta(); };
+$("atras").onclick = () => { if (i > 0) { i--; pinta(); } };
+$("cancelar").onclick = () => { i = 0; pinta(); };
+document.querySelectorAll(".pest").forEach(b => b.onclick = () => cambia(b.dataset.op));
+cambia("a");
+</script>
+</body>
+</html>

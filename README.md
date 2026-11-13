@@ -1,3 +1,5 @@
+**[⬇ Descargar instalador para Windows (Corte Frutal 1.0.0)](https://github.com/nasa-cell/frutas-indice/releases/latest/download/Instalar.Corte.Frutal.1.0.0.exe)**
+
 # Corte Frutal
 
 Juego de visión computacional: cortas frutas moviendo tu **dedo índice** frente a la cámara, sin mouse ni teclado.
@@ -19,12 +21,14 @@ Para jugar desde lejos, el programa hace **zoom digital** sobre la mano (se ve u
 - 60 segundos y 3 vidas.
 - Cada fruta vale 1 punto. Cortar 3 o más de un solo trazo da combo y puntos extra.
 - La bomba quita 1 vida. Si una fruta se cae sin cortar, no pasa nada.
-- El récord se guarda en `datos/record.json`.
+- El récord se guarda en `%APPDATA%\Corte Frutalecord.json` (no se pierde al actualizar ni al desinstalar).
 - Para empezar (o jugar otra vez) se corta la fruta grande que aparece abajo.
 
 ## Cómo abrirlo
 
-Doble clic en **`iniciar.bat`**. La primera vez instala lo necesario (hace falta internet y Python 3.12).
+Lo más fácil: descarga el instalador (enlace de arriba), ábrelo y dale a **Instalar**. No necesita internet ni Python.
+
+Desde el código: doble clic en **`iniciar.bat`**. La primera vez instala lo necesario (hace falta internet y Python 3.12).
 
 A mano:
 

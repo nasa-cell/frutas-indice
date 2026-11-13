@@ -11,7 +11,10 @@ import random
 import sys
 import time
 
-CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if getattr(sys, "frozen", False):   # juego instalado: los recursos van junto al .exe
+    CARPETA_PROYECTO = sys._MEIPASS
+else:
+    CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(CARPETA_PROYECTO)
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
@@ -24,11 +27,19 @@ from camara import Camara
 from fondo import Fondo
 from frutas import Fruta, Gota, Imagenes, Mancha, Mitad
 
-ARCHIVO_RECORD = os.path.join("datos", "record.json")
+# El récord vive en la carpeta del usuario: no se pierde al actualizar o desinstalar.
+ARCHIVO_RECORD = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "Corte Frutal", "record.json")
+RECORD_ANTIGUO = os.path.join(CARPETA_PROYECTO, "datos", "record.json")
 MODELO_MANOS = os.path.join("recursos", "modelo", "hand_landmarker.task")
 
 
 def leer_record():
+    if not os.path.exists(ARCHIVO_RECORD) and os.path.exists(RECORD_ANTIGUO):
+        try:
+            with open(RECORD_ANTIGUO, encoding="utf-8") as f:
+                guardar_record(int(json.load(f).get("record", 0)))
+        except (OSError, ValueError):
+            pass
     try:
         with open(ARCHIVO_RECORD, encoding="utf-8") as f:
             return int(json.load(f).get("record", 0))

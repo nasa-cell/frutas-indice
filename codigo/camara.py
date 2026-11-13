@@ -110,7 +110,7 @@ class Camara(threading.Thread):
             return
         self.mensaje = "Cargando el detector de manos…"
         opciones = vision.HandLandmarkerOptions(
-            base_options=BaseOptions(model_asset_path=self.ruta_modelo),
+            base_options=BaseOptions(model_asset_buffer=open(self.ruta_modelo, "rb").read()),   # buffer: funciona aunque la carpeta tenga tildes o ñ
             running_mode=vision.RunningMode.VIDEO, num_hands=1,
             min_hand_detection_confidence=.4, min_hand_presence_confidence=.4, min_tracking_confidence=.4)
         detector = vision.HandLandmarker.create_from_options(opciones)
