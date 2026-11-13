@@ -1,7 +1,7 @@
 ﻿; Instalador de Corte Frutal (diseño C: una sola pantalla con el fondo del juego).
 ; Se compila con aplicacion/compilar.sh
 
-#define Version "1.0.0"
+#define Version "1.0.1"
 #ifndef Dist
   #define Dist "C:\herramientas\compilacion\corte-frutal\dist\Corte Frutal"
 #endif

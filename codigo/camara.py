@@ -6,6 +6,8 @@
   toda la pantalla.
 - Filtro «One Euro»: quita el temblor cuando el dedo va lento y no agrega
   retraso cuando va rápido.
+- Zona clavada: con el dedo quieto el puntero no se mueve hasta que la mano
+  se mueve más o menos 1 cm.
 """
 import math
 import threading
@@ -130,7 +132,8 @@ class Camara(threading.Thread):
                     time.sleep(.005)
         threading.Thread(target=leer_camara, daemon=True).start()
 
-        fx, fy = FiltroEuro(min_corte=1.5, beta=45.0), FiltroEuro(min_corte=1.5, beta=30.0)
+        fx, fy = FiltroEuro(min_corte=.9, beta=30.0), FiltroEuro(min_corte=.9, beta=22.0)
+        ancla = None           # punto clavado del puntero (zona clavada)
         zona = [.5, .5, 1.0]
         tam_mano = .22
         buscar = 0
@@ -143,6 +146,7 @@ class Camara(threading.Thread):
         cuadros, t_fps = 0, time.perf_counter()
         t_ultimo = 0
         ADELANTO = .05         # segundos que se adelanta el dedo para tapar el retraso de la cámara
+        RAPIDO = .6            # desde esta rapidez (pantallas por segundo) el adelanto empieza a actuar
 
         while self.activa:
             if not aviso.wait(.5) or ultimo["n"] == visto:
@@ -181,8 +185,14 @@ class Camara(threading.Thread):
                 tam_mano += (t - tam_mano) * .04
                 # zoom: nunca muy cerrado y siempre centrado donde va a estar la mano
                 zona[2] += (_lim(tam_mano * 6.5, .55, 1) - zona[2]) * .15
-                zona[0] = mano[9][0] + vel_mano[0] * .06
-                zona[1] = mano[9][1] + vel_mano[1] * .06
+                # el recorte solo se mueve si la mano sale de un margen: así no persigue el temblor
+                ox = mano[9][0] + vel_mano[0] * .06 - zona[0]
+                oy = mano[9][1] + vel_mano[1] * .06 - zona[1]
+                dist = math.hypot(ox, oy)
+                margen = tam_mano * .35
+                if dist > margen:
+                    zona[0] += ox * (dist - margen) / dist
+                    zona[1] += oy * (dist - margen) / dist
                 rw = _lim(tam_mano * alto / ancho * 7, .28, .78)
                 rh = _lim(rw * (ancho / alto) / self.aspecto_pantalla, .25, .85)
                 cy = .46
@@ -190,12 +200,24 @@ class Camara(threading.Thread):
                 nx = _lim(((1 - px) - (.5 - rw / 2)) / rw, 0, 1)
                 ny = _lim((py - (cy - rh / 2)) / rh, 0, 1)
                 sx, sy = fx.paso(nx, ahora), fy.paso(ny, ahora)
+                # zona clavada de unos 1 cm de mano (la mano mide unos 9 cm de muñeca a nudillo)
+                cm = tam_mano / 9
+                rx, ry = cm * alto / ancho / rw, cm / rh
+                if ancla is None:
+                    ancla = [sx, sy]
+                dz = math.hypot((sx - ancla[0]) / rx, (sy - ancla[1]) / ry)
+                if dz > 1:
+                    ancla[0] += (sx - ancla[0]) * (dz - 1) / dz
+                    ancla[1] += (sy - ancla[1]) * (dz - 1) / dz
+                sx, sy = ancla
                 if previo:
                     dtp = max(1e-3, ahora - previo[2])
                     vel[0] += ((sx - previo[0]) / dtp - vel[0]) * .6
                     vel[1] += ((sy - previo[1]) / dtp - vel[1]) * .6
                 previo = (sx, sy, ahora)
-                dedo = (_lim(sx + vel[0] * ADELANTO, 0, 1), _lim(sy + vel[1] * ADELANTO, 0, 1))
+                rapidez = math.hypot(vel[0], vel[1])
+                adelanto = ADELANTO * _lim((rapidez - RAPIDO) / RAPIDO, 0, 1)   # lento: sin adelanto, no agranda el temblor
+                dedo = (_lim(sx + vel[0] * adelanto, 0, 1), _lim(sy + vel[1] * adelanto, 0, 1))
             else:
                 if not perdida:
                     perdida = ahora
@@ -212,6 +234,7 @@ class Camara(threading.Thread):
                     vel_mano = [0.0, 0.0]
                     fx.reiniciar()
                     fy.reiniciar()
+                    ancla = None
 
             mini = cv2.resize(cuadro, (320, int(320 * alto / ancho)), interpolation=cv2.INTER_AREA)
             mini = cv2.cvtColor(cv2.flip(mini, 1), cv2.COLOR_BGR2RGB)
